@@ -1,89 +1,94 @@
-#python3 -m pip install pygame
-#Copyright - ChrisHarperCoding
-
 import pygame
 import random
 
 # Initialize Pygame
 pygame.init()
 
-# Set the dimensions of the game window
-win_height = 600
-win_width = 400
-win = pygame.display.set_mode((win_width, win_height))
+# Set up some constants
+WIDTH, HEIGHT = 800, 600
+PLAYER_SIZE = 50
+OBSTACLE_WIDTH, OBSTACLE_HEIGHT = 80, 20
+SPEED = 5
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+FONT = pygame.font.Font(None, 36)
 
-# Define the player object
-class Player(object):
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.vel = 5
+# Set up the display
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-    def draw(self, win):
-        pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
+# Set up the player and obstacle
+player = pygame.Rect(WIDTH / 2, HEIGHT - PLAYER_SIZE - 10, PLAYER_SIZE, PLAYER_SIZE)
+obstacles = pygame.sprite.Group()
 
-# Define the obstacle object
-class Obstacle(object):
-    def __init__(self, x, y, width, height, vel):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.vel = vel
+# Set up the clock
+clock = pygame.time.Clock()
 
-    def draw(self, win):
-        pygame.draw.rect(win, (0, 255, 0), (self.x, self.y, self.width, self.height))
+# Game state
+game_state = "start"
+score = 0
 
-    def move(self):
-        self.y += self.vel
-
-# Function to redraw the game window
-def redraw_window():
-    win.fill((0, 0, 0))
-    player.draw(win)
-    for obstacle in obstacles:
-        obstacle.draw(win)
-    pygame.display.update()
-
-# Create player object
-player = Player(200, 530, 40, 60)
-
-# Create obstacles
-obstacles = []
-for i in range(5):
-    obstacles.append(Obstacle(random.randint(0, win_width-50), random.randint(-i*150, -50), 50, 50, 2))
-
-# Main game loop
-run = True
-while run:
-    pygame.time.delay(100)
-
+# Game loop
+running = True
+while running:
+    # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            run = False
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                if game_state == "start":
+                    game_state = "running"
+                elif game_state == "game over":
+                    game_state = "start"
+                    score = 0
+                    player.x = WIDTH / 2
+                    obstacles.empty()
 
-    for obstacle in obstacles:
-        obstacle.move()
-        if obstacle.y > win_height:
-            obstacles.pop(obstacles.index(obstacle))
-            obstacles.append(Obstacle(random.randint(0, win_width-50), -50, 50, 50, 2))
-        if player.y < obstacle.y + obstacle.height:
-            if player.x > obstacle.x and player.x < obstacle.x + obstacle.width or player.x + player.width > obstacle.x and player.x + player.width < obstacle.x + obstacle.width:
-                run = False
+    # Game logic
+    if game_state == "running":
+        # Player movement
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and player.x - SPEED > 0:
+            player.x -= SPEED
+        if keys[pygame.K_RIGHT] and player.x + SPEED < WIDTH - PLAYER_SIZE:
+            player.x += SPEED
 
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and player.x - player.vel > 0:
-        player.x -= player.vel
-    if keys[pygame.K_RIGHT] and player.x + player.vel < win_width - player.width:
-        player.x += player.vel
-    if keys[pygame.K_UP] and player.y - player.vel > 0:
-        player.y -= player.vel
-    if keys[pygame.K_DOWN] and player.y + player.vel < win_height - player.height:
-        player.y += player.vel
+        # Add new obstacles
+        if not obstacles or obstacles.sprites()[-1].rect.y > 20:
+            obstacle = pygame.sprite.Sprite()
+            obstacle.rect = pygame.Rect(random.randrange(WIDTH - OBSTACLE_WIDTH), -OBSTACLE_HEIGHT, OBSTACLE_WIDTH, OBSTACLE_HEIGHT)
+            obstacle.image = pygame.Surface((OBSTACLE_WIDTH, OBSTACLE_HEIGHT))
+            obstacle.image.fill(RED)
+            obstacles.add(obstacle)
 
-    redraw_window()
+        # Obstacle movement and collision detection
+        for obstacle in obstacles:
+            obstacle.rect.y += SPEED
+            if player.colliderect(obstacle.rect):
+                game_state = "game over"
+            if obstacle.rect.y > HEIGHT:
+                obstacles.remove(obstacle)
+                score += 1
 
+    # Drawing
+    screen.fill((0, 0, 0))
+    if game_state == "start":
+        text = FONT.render("Press SPACE to start", True, WHITE)
+        screen.blit(text, (WIDTH / 2 - text.get_width() / 2, HEIGHT / 2 - text.get_height() / 2))
+    elif game_state == "running":
+        pygame.draw.rect(screen, WHITE, player)
+        obstacles.draw(screen)
+        text = FONT.render(f"Score: {score}", True, WHITE)
+        screen.blit(text, (10, 10))
+    elif game_state == "game over":
+        text = FONT.render(f"Game Over! Score: {score}. Press SPACE to restart", True, WHITE)
+        screen.blit(text, (WIDTH / 2 - text.get_width() / 2, HEIGHT / 2 - text.get_height() / 2))
+
+    # Flip the display
+    pygame.display.flip()
+
+    # Cap the frame rate
+    clock.tick(60)
+
+# Quit Pygame
 pygame.quit()
-
