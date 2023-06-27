@@ -16,9 +16,16 @@ FONT = pygame.font.Font(None, 36)
 # Set up the display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-# Set up the player and obstacle
+# Create a list of stars for the starfield effect
+stars = []
+for _ in range(100):
+    x = random.randint(0, WIDTH)
+    y = random.randint(0, HEIGHT)
+    stars.append([x, y])
+
+# Set up the player and obstacles
 player = pygame.Rect(WIDTH / 2, HEIGHT - PLAYER_SIZE - 10, PLAYER_SIZE, PLAYER_SIZE)
-obstacles = pygame.sprite.Group()
+obstacles = []
 
 # Set up the clock
 clock = pygame.time.Clock()
@@ -36,13 +43,11 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                if game_state == "start":
+                if game_state == "start" or game_state == "game over":
                     game_state = "running"
-                elif game_state == "game over":
-                    game_state = "start"
                     score = 0
-                    player.x = WIDTH / 2
-                    obstacles.empty()
+                    player = pygame.Rect(WIDTH / 2, HEIGHT - PLAYER_SIZE - 10, PLAYER_SIZE, PLAYER_SIZE)
+                    obstacles = []
 
     # Game logic
     if game_state == "running":
@@ -54,30 +59,38 @@ while running:
             player.x += SPEED
 
         # Add new obstacles
-        if not obstacles or obstacles.sprites()[-1].rect.y > 20:
-            obstacle = pygame.sprite.Sprite()
-            obstacle.rect = pygame.Rect(random.randrange(WIDTH - OBSTACLE_WIDTH), -OBSTACLE_HEIGHT, OBSTACLE_WIDTH, OBSTACLE_HEIGHT)
-            obstacle.image = pygame.Surface((OBSTACLE_WIDTH, OBSTACLE_HEIGHT))
-            obstacle.image.fill(RED)
-            obstacles.add(obstacle)
+        if len(obstacles) == 0 or obstacles[-1][1] > 20:
+            obstacle_x = random.randrange(WIDTH - OBSTACLE_WIDTH)
+            obstacles.append([obstacle_x, -OBSTACLE_HEIGHT])
 
         # Obstacle movement and collision detection
         for obstacle in obstacles:
-            obstacle.rect.y += SPEED
-            if player.colliderect(obstacle.rect):
+            obstacle[1] += SPEED
+            if player.colliderect(pygame.Rect(obstacle[0], obstacle[1], OBSTACLE_WIDTH, OBSTACLE_HEIGHT)):
                 game_state = "game over"
-            if obstacle.rect.y > HEIGHT:
+            if obstacle[1] > HEIGHT:
                 obstacles.remove(obstacle)
                 score += 1
 
+    # Update the starfield
+    for star in stars:
+        star[1] += SPEED
+        if star[1] > HEIGHT:
+            star[1] = random.randint(-HEIGHT, 0)
+
     # Drawing
+    # Draw the starfield background
     screen.fill((0, 0, 0))
+    for star in stars:
+        pygame.draw.circle(screen, WHITE, (star[0], star[1]), 1)
+
     if game_state == "start":
         text = FONT.render("Press SPACE to start", True, WHITE)
         screen.blit(text, (WIDTH / 2 - text.get_width() / 2, HEIGHT / 2 - text.get_height() / 2))
     elif game_state == "running":
         pygame.draw.rect(screen, WHITE, player)
-        obstacles.draw(screen)
+        for obstacle in obstacles:
+            pygame.draw.rect(screen, RED, (obstacle[0], obstacle[1], OBSTACLE_WIDTH, OBSTACLE_HEIGHT))
         text = FONT.render(f"Score: {score}", True, WHITE)
         screen.blit(text, (10, 10))
     elif game_state == "game over":
@@ -92,3 +105,4 @@ while running:
 
 # Quit Pygame
 pygame.quit()
+
