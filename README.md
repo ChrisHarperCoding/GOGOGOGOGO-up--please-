@@ -1,2 +1,3 @@
 # GOGOGOGOGO(up, please)
- My first game written from scratch
+My first game written from scratch
+Definitely a work in progress.
